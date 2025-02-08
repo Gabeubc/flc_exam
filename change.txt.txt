@@ -1,0 +1,26 @@
+scanner:
+
+	- add new on return statement of Symbpl creation
+	
+	- use the special symbol .* for identificaion of quoted string
+	
+	- add special char *  on comment regex, in order to check more characters.
+
+	- fix on token2 making it fit requirements.
+
+	- fix on token3 since I misunderstood wht char should has been repeated.
+
+	- add idCStyle  regex
+
+	- add true or false regex
+
+
+parser: 
+
+	- add symbolTable
+	
+	- add BOOL non terminal which cover true and false string
+
+	- add semantic rules
+
+
