@@ -1,0 +1,107 @@
+/*************************
+ Parser
+**************************/
+
+import java_cup.runtime.*;
+import java.util.*;
+import java.io.*;
+
+
+parser code 	{:
+    
+    public void report_error(String message, Object info) {
+        StringBuffer m = new StringBuffer(message);
+        if (info instanceof Symbol) {
+            if (((Symbol)info).left != 1 && ((Symbol)info).right != 1) {
+                if (((Symbol)info).left != -1 && ((Symbol)info).right != -1) {
+                    int line = (((Symbol)info).left) + 1;
+                    int column = (((Symbol)info).right) + 1;
+                    m.append(" (line " + line + " column " + column + ")");
+                }
+            }
+            System.err.println(m);
+        }
+    }
+    
+    public Object stack(int position) {
+        return (((Symbol)stack.elementAt(tos + position)).value);
+    }
+:};
+
+
+
+//////////////////////////////////
+///// SYMBOLS DECLARATION
+/////////////////////////////////
+
+terminal TOKEN_1, TOKEN_2, TOKEN_3, SEPARATOR, SC,
+ID, EQ, FZ, LPAREN, RPAREN, COMMA, PATH, OPERATION,
+LBRACKET, RBRACKET, IF, IN, RANGE, QUOTED_STRING, REAL_NUMBER, PRINT,
+PLUS, MINUS, DIVIDE, MULTIPLY;
+
+non terminal goal, header, program,
+token_2_3_list, token_2_list, token_3_list,
+instructions, instruction, fz, assignment, if, expression,
+points, point, intervals, interval, range;
+
+
+
+//////////////////////////////////
+///// GRAMMAR
+/////////////////////////////////
+
+start with goal;
+
+goal::= header SEPARATOR program;
+
+header ::= token_2_3_list TOKEN_1 token_2_3_list TOKEN_1 token_2_3_list;
+
+token_2_3_list ::= | token_2_list token_3_list
+| token_3_list token_2_list
+| token_2_list
+| token_3_list ;
+
+token_2_list ::= TOKEN_2 SC | TOKEN_2 SC token_2_list;
+
+token_3_list ::= TOKEN_3 SC | TOKEN_3 SC token_3_list;
+
+program ::= instructions;
+
+instructions ::= | instruction SC instruction SC instruction SC instruction SC instructions;
+
+instruction ::= assignment | fz | if;
+
+assignment ::= ID EQ expression;
+
+fz ::= FZ LPAREN OPERATION COMMA points RPAREN;
+
+points ::= point | point COMMA points;
+
+point ::= LBRACKET expression COMMA expression RBRACKET;
+
+if ::= IF expression intervals SC;
+
+intervals ::= interval | interval intervals;
+
+interval ::= IN RANGE range PRINT QUOTED_STRING;
+
+range ::= LBRACKET expression COMMA expression RBRACKET;
+
+expression ::= expr PLUS expr 
+| expr MINUS expr 
+| expr MULTIPLY expr 
+| expr DIVIDE expr 
+| expr  
+| LPAREN expression RPAREN ;
+
+expr ::= ID | REAL_NUMBER
+
+
+
+
+
+
+
+
+
+

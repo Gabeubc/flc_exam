@@ -1,0 +1,231 @@
+/*************************
+ Parser
+**************************/
+
+import java_cup.runtime.*;
+import java.util.*;
+import java.io.*;
+
+init with{:
+    table = new HashMap<String, Integer>();
+:}
+
+parser code 	{:
+
+    public static HashMap table;
+    
+    public void report_erLPARENr(String message, Object info) {
+        StringBuffer m = new StringBuffer(message);
+        if (info instanceof Symbol) {
+            if (((Symbol)info).left != 1 && ((Symbol)info).right != 1) {
+                if (((Symbol)info).left != -1 && ((Symbol)info).right != -1) {
+                    int line = (((Symbol)info).left) + 1;
+                    int column = (((Symbol)info).right) + 1;
+                    m.append(" (line " + line + " column " + column + ")");
+                }
+            }
+            System.err.println(m);
+        }
+    }
+    
+    public Object stack(int position) {
+        return (((Symbol)stack.elementAt(tos + position)).value);
+    }
+
+:};
+
+
+action code {:
+    public class Configure{
+        public String s;
+        public Integer i;
+
+        public Configure(String s, Integer i){
+            this.s = s;
+            this.i = i;
+        }
+
+        @Override
+        public String toString(){
+            return "s: " + this.s + ", i: " + this.i;
+        }
+    }
+:}
+
+
+//////////////////////////////////
+///// SYMBOLS DECLARATION
+/////////////////////////////////
+
+terminal TOKEN_1, TOKEN_2, TOKEN_3, SEPARATOR, SC,
+C, STORE, CASE, CONFIGURE,
+TEMPERATURE, HUMIDITY, ID, EQ;
+terminal PLUS,
+MINUS, DIV, POW, MULT, LPAREN, RPAREN, LBRACE,
+RBRACE, AVG, IS, IN_RANGE, EQUAL, UMINUS;
+
+terminal Integer INTEGER;
+
+non terminal goal, header, states,
+header_1, header_2, token_1_list, token_2_list, token_3_list,
+token_1_2_list, token_2_3_list,
+commands, command, store, case, assignements, assignement,
+arithmetic_exps, arithmetic_exp, condition_list, condition,
+in_range, equal, mod_list, mod, configure;
+
+
+
+// Precedence rules — ordered from lowest to highest precedence
+precedence left PLUS, MINUS;
+precedence left MULT, DIV;
+precedence right POW;        // Important: right-associative
+precedence right UMINUS;     // For unary minus
+
+
+
+
+//////////////////////////////////
+///// GRAMMAR
+/////////////////////////////////
+
+start with goal;
+
+goal ::= header SEPARATOR states;
+
+header ::= header_1 | header_2;
+
+header_1 ::= token_1_list token_2_3_list;
+
+header_2 ::= TOKEN_3 SC token_1_2_list TOKEN_3 SC token_1_2_list;
+
+token_1_2_list ::= | TOKEN_1 SC token_1_2_list
+| TOKEN_2 SC token_1_2_list;  // lista di token alternato
+
+token_1_list ::= TOKEN_1 SC TOKEN_1 SC TOKEN_1 SC TOKEN_1 SC 
+| token_1_list TOKEN_1 SC TOKEN_1 SC;
+
+token_2_3_list ::= | token_2_list token_3_list
+| token_3_list token_2_list;
+
+token_2_list ::= TOKEN_2 SC | token_2_list TOKEN_2 SC;
+
+token_3_list ::= TOKEN_3 SC | token_3_list TOKEN_3 SC;
+
+states ::= configure commands;
+
+configure ::= CONFIGURE HUMIDITY:h INTEGER:hValue TEMPERATURE:t INTEGER:tValue SC {:
+    parser.table.put((String)h, (Integer)hValue);
+    parser.table.put((String)t, (Integer)tValue);
+:}
+| CONFIGURE TEMPERATURE:t INTEGER:tValue  HUMIDITY:h INTEGER:hValue SC {:
+    parser.table.put((String)h, (Integer)hValue);
+    parser.table.put((String)t, (Integer)tValue);
+:}
+| CONFIGURE HUMIDITY:h INTEGER:i SC {:
+    parser.table.put((String)h, (Integer)i);
+:}
+| CONFIGURE TEMPERATURE:t INTEGER:i SC {:
+    parser.table.put((String)t, (Integer)i);
+:};
+
+commands ::= | commands command SC;
+
+command ::= store | case;
+
+store ::= STORE assignements;
+
+assignements ::= assignement | assignement C assignements;
+
+assignement ::= ID:var EQ arithmetic_exp:value{:
+    parser.table.put(var, value);
+:};
+
+arithmetic_exp ::=  arithmetic_exp:x PLUS arithmetic_exp:y {: RESULT = (Integer) x + (Integer) y; :}
+| arithmetic_exp:x MINUS arithmetic_exp:y {: RESULT = (Integer) x - (Integer) y; :}
+| arithmetic_exp:x MULT arithmetic_exp:y {: RESULT = (Integer) x * (Integer) y; :}
+| arithmetic_exp:x DIV arithmetic_exp:y {: RESULT = (Integer) x / (Integer) y; :}
+| arithmetic_exp:x POW arithmetic_exp:y  {: RESULT = Math.pow((Integer) x , (Integer) y); :} %prec POW
+| AVG LPAREN arithmetic_exps:values RPAREN  {: 
+    if(((ArrayList<Integer>) values) == null) RESULT = 0;
+        else {
+                RESULT = ((ArrayList<Integer>) values)
+                    .stream()
+                        .reduce(0, Integer::sum)  /  ((ArrayList<Integer>) values).size();}; 
+                        :}
+| LPAREN arithmetic_exp:x RPAREN {: RESULT = x; :}
+| MINUS arithmetic_exp:x  {: RESULT = -((Integer)x); :} %prec UMINUS 
+| PLUS arithmetic_exp:x   {: RESULT = x; :} %prec UMINUS
+| INTEGER:x {: RESULT = x; :}
+| ID:var  {: RESULT = (Integer) parser.table.get(var);:};
+
+arithmetic_exps ::= {::}
+| arithmetic_exp:value {:
+RESULT = new ArrayList<Integer>();
+((ArrayList<Integer>) RESULT).add((Integer)value);
+:} 
+| arithmetic_exps:values C arithmetic_exp:value {:
+((ArrayList<Integer>) values).add((Integer)value);
+RESULT = values;
+:} ;
+                
+        
+
+case ::= CASE arithmetic_exp IS LBRACE condition_list RBRACE;
+
+condition_list ::= condition:v | condition_list condition;
+
+condition ::= in_range:v {: RESULT = v; :} | equal:v {: RESULT = v; :} ;
+
+in_range ::= IN_RANGE arithmetic_exp:a C arithmetic_exp:b LBRACE mod_list:mods RBRACE{:
+    Integer value = (Integer) parser.stack(-9) == null ? (Integer) parser.stack(-10) : (Integer) parser.stack(-9);
+    if((Integer) a < value && value < (Integer) b){
+        ((ArrayList<Configure>) mods)
+        .forEach( mod_t -> {
+            Configure mod = (Configure) mod_t;
+            if ("TEMPERATURE".equals(mod.s)){
+                Integer i = (Integer) parser.table.get("TEMPERATURE");
+                System.out.println("new states: " + "T: " + (i + mod.i) + ", H: " + parser.table.get("HUMIDITY"));
+            }
+            if ("HUMIDITY".equals(mod.s)){
+                Integer i = (Integer) parser.table.get("HUMIDITY");
+                System.out.println("new states: " + "T: " + parser.table.get("TEMPERATURE") + ", H: " + (i + mod.i));
+            }
+        } ); 
+    };
+:};
+
+equal ::= EQUAL arithmetic_exp:a LBRACE mod_list:mods RBRACE{:
+    Integer value = (Integer) parser.stack(-7) == null ? (Integer) parser.stack(-8) : (Integer) parser.stack(-7);
+    if((Integer) a == value){
+        ((ArrayList<Configure>) mods)
+        .forEach( mod_t -> {
+            Configure mod = (Configure) mod_t;
+            if ("TEMPERATURE".equals(mod.s)){
+                Integer i = (Integer) parser.table.get("TEMPERATURE");
+                parser.table.put("TEMPERATURE", (i + mod.i));
+                System.out.println("new states: " + "T: " + (i + mod.i) + ", H: " + parser.table.get("HUMIDITY"));
+            } else if ("HUMIDITY".equals(mod.s)){
+                Integer i = (Integer) parser.table.get("HUMIDITY");
+                parser.table.put("HUMIDITY", (i + mod.i));
+                System.out.println("new states: " + "T: " + parser.table.get("TEMPERATURE") + ", H: " + (i + mod.i));
+            } else {
+                System.out.println("ERROR");
+            }
+            
+        } ); 
+    };
+:};
+
+mod_list ::=  {:
+    RESULT = new ArrayList<Configure>();
+:}| mod_list:values mod:value{:
+    ((ArrayList<Configure>) values).add((Configure) value);
+    RESULT = values;
+:};
+
+mod ::= TEMPERATURE:s arithmetic_exp:i SC{:
+    RESULT = new Configure((String)s, (Integer)i);
+:}
+| HUMIDITY:s arithmetic_exp:i SC{:
+    RESULT = new Configure((String)s, (Integer)i);
+:};

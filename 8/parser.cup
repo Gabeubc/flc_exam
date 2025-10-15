@@ -1,0 +1,119 @@
+/*************************
+ Parser
+**************************/
+
+import java_cup.runtime.*;
+import java.util.*;
+import java.io.*;
+
+
+init with{:
+    table = new HashMap<String, HashMap<String, Float>>();
+:}
+
+parser code 	{:
+
+    public static HashMap table;
+
+    public void report_error(String message, Object info) {
+        StringBuffer m = new StringBuffer(message);
+        if (info instanceof Symbol) {
+            if (((Symbol)info).left != 1 && ((Symbol)info).right != 1) {
+                if (((Symbol)info).left != -1 && ((Symbol)info).right != -1) {
+                    int line = (((Symbol)info).left) + 1;
+                    int column = (((Symbol)info).right) + 1;
+                    m.append(" (line " + line + " column " + column + ")");
+                }
+            }
+            System.err.println(m);
+        }
+    }
+    
+    public Object stack(int position) {
+        try{
+            return (((Symbol)stack.elementAt(tos + position)).value);
+        }catch (Exception e){
+            return null;
+        }
+    }
+:};
+
+action code {:
+:}
+
+//////////////////////////////////
+///// SYMBOLS DECLARATION
+/////////////////////////////////
+
+terminal TOKEN_1, TOKEN_2, TOKEN_3, SC, SEPARATOR,
+QUOTED_STRING, R_ARROW, REAL_NUMBER,
+COMPUTE, TO, COLON, TIME, EXPENSE, EXTRA, C,
+U_INTEGER, PERCENT, KM, KM_H,
+MINUS, DISC, EURO_KM, EURO;
+
+non terminal goal, header, commands,
+token_3_list, distances, computes,
+compute, distance, destinations,
+ type, elements, times,
+time, expenses, expense, exp,
+disc;
+
+
+
+//////////////////////////////////
+///// GRAMMAR
+/////////////////////////////////
+
+start with goal;
+
+goal ::= header SEPARATOR commands {: System.out.println(parser.table); :};
+
+header ::= token_3_list TOKEN_1 SC token_3_list TOKEN_1 SC token_3_list TOKEN_2 SC token_3_list
+| token_3_list TOKEN_2 SC token_3_list TOKEN_1 SC token_3_list TOKEN_1 SC token_3_list
+| token_3_list TOKEN_1 SC token_3_list TOKEN_2 SC token_3_list TOKEN_1 SC token_3_list;
+
+token_3_list ::= | token_3_list TOKEN_3 SC;
+
+commands ::= distances computes;
+
+distances ::= distance distance distance 
+| distances distance distance;
+
+computes ::= | computes compute ;
+
+distance ::= QUOTED_STRING:s R_ARROW destinations:d SC {:
+    parser.table.put((String)s, (HashMap<String, Float>) d);
+:};
+
+destinations ::= QUOTED_STRING:s REAL_NUMBER:r KM{:
+    RESULT = new HashMap<String, Float>();
+    ((HashMap<String, Float>) RESULT).put((String)s, (Float)r);
+:} | destinations:table C QUOTED_STRING:s REAL_NUMBER:r KM{:
+    ((HashMap<String, Float>) table).put((String)s, (Float)r);
+    RESULT = table;
+:};
+
+compute ::= COMPUTE QUOTED_STRING TO QUOTED_STRING type COLON elements SC;
+
+type ::= TIME | EXPENSE | TIME EXTRA REAL_NUMBER | EXPENSE EXTRA REAL_NUMBER;
+
+elements ::= times | expenses;
+
+times ::= time | times C time;
+
+time ::= U_INTEGER PERCENT U_INTEGER KM_H;
+
+expenses ::= expense | expenses C expense;
+
+expense ::= QUOTED_STRING exp MINUS disc
+| QUOTED_STRING disc MINUS exp
+| QUOTED_STRING exp;
+
+exp ::= REAL_NUMBER EURO_KM;
+
+disc ::= DISC REAL_NUMBER EURO;
+
+
+
+
+

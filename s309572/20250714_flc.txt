@@ -1,0 +1,12 @@
+Y>-3*5*7/11;                     [** tok2 **]
+X>2A#12ef#abcd-127.0.0.1;        [** tok1 **]
+Z>10:14:12xxyyzzxxyyzz;          [** tok3 **]
+##
+exec !T & F | F;  [** F & F | F = F | F = F **]
+max 4 7 2;  [** print 7 T **]
+if 4 5;     [** print 5 F (because r-1=T and r-2=F) **]
+ass a b c;  [** a=F b=F c=F T **]
+exec a | T; [** F | T = T **]
+if 3 7;      [** 3 T (because r-1=T and r-2=T) **]
+ass d;      [** d=T T **]
+

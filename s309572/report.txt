@@ -1,0 +1,24 @@
+Scanner:
+- token_1:
+   Remove {token_separator} from token_1.
+- OR symbol:
+   Remove the second | character.
+- TRUE and FALSE symbols:
+   Replace the characters that represent them with "T" and "F".
+
+Grammar:
+- token_1_3_mix_list:
+   Modify the grammar by replacing the separate lists of TOKEN_1 and TOKEN_3 with a single list based on token_1_3_mix_list.
+- bool_exp:
+   Remove the operand non-terminal from the parser.
+
+Semantic:
+- When an ID is matched, set the result to parser.table.get((String) i).
+- max instruction:
+   Print the maximum value and return true instead of returning the maximum.
+- Add a return value when an instruction is recognized.
+- save the result of instructions inside a list of Boolean that will be used in case the intructions are more than 5.
+- if instruction:
+   Add the missing semantic.
+- ass instruction:
+   Add the missing semantic.

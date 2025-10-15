@@ -1,0 +1,276 @@
+/*************************
+ Parser
+**************************/
+
+import java_cup.runtime.*;
+import java.util.*;
+import java.io.*;
+
+init with{:
+    table = new HashMap<String, HashMap<String, Integer>>();
+:}
+
+parser code 	{:
+
+    public static HashMap table;
+
+    public void report_error(String message, Object info) {
+        StringBuffer m = new StringBuffer(message);
+        if (info instanceof Symbol) {
+            if (((Symbol)info).left != 1 && ((Symbol)info).right != 1) {
+                if (((Symbol)info).left != -1 && ((Symbol)info).right != -1) {
+                    int line = (((Symbol)info).left) + 1;
+                    int column = (((Symbol)info).right) + 1;
+                    m.append(" (line " + line + " column " + column + ")");
+                }
+            }
+            System.err.println(m);
+        }
+    }
+    
+    public Object stack(int position) {
+        try{
+            return (((Symbol)stack.elementAt(tos + position)).value);
+        }catch (Exception e){
+            return null;
+        }
+    }
+:};
+
+action code {:
+    public class CarSet{
+        public Integer x;
+        public Integer y;
+        public Integer f;
+
+        public CarSet(Integer x, Integer y, Integer f){
+            this.x = x;
+            this.y = y;
+            this.f = f;
+        }
+
+        public CarSet plus( CarSet cs ){
+            this.x += cs.x;
+            this.y += cs.y;
+            this.f += cs.f;
+            return this;
+        }
+
+        @Override
+        public String toString(){
+            return "x: " + this.x + ", y: " + this.y + ", f: " + this.f;
+        }
+    }
+:}
+
+
+
+//////////////////////////////////
+///// SYMBOLS DECLARATION
+/////////////////////////////////
+
+terminal TOKEN_1, TOKEN_2, TOKEN_3, SEPARATOR, SC,
+SET, POSITION, C, MINUS, FUEL, 
+DECLARE, LBRACE, RBRACE, ID, EQ, QUESION_MARK,
+ELSE, AND, OR, EQUAL, NOT, LPAREN, RPAREN, DOT,
+COLON, MIN, MAX, INCREASE, DECREASE, TRUE, FALSE, MV;
+
+terminal Integer SIGNED_INTEGER;
+
+non terminal goal, header, cars, token_1_2_list,
+commands, set, command, declare, attributes,
+attribute, if, mv_list, operand, 
+variable_name_and_attribute, mv, fuel,
+ops, values, value, func, bool_exp;
+
+precedence left OR;
+precedence left AND;
+precedence left EQUAL;
+precedence right NOT;
+
+
+//////////////////////////////////
+///// GRAMMAR
+/////////////////////////////////
+
+start with goal;
+
+goal ::= header SEPARATOR cars;
+
+header ::= token_1_2_list 
+| token_1_2_list TOKEN_3 SC token_1_2_list
+| token_1_2_list TOKEN_3 SC token_1_2_list TOKEN_3 SC token_1_2_list
+| token_1_2_list TOKEN_3 SC token_1_2_list TOKEN_3 SC token_1_2_list TOKEN_3 SC token_1_2_list;
+
+token_1_2_list ::= 
+| TOKEN_1 SC token_1_2_list
+| TOKEN_2 SC token_1_2_list;
+
+cars ::= set:cs SC commands;
+
+set ::= SET POSITION SIGNED_INTEGER:x C SIGNED_INTEGER:y MINUS FUEL SIGNED_INTEGER:f{:
+    CarSet cs = new CarSet(x, y, f);
+    RESULT = cs;
+:}
+| SET FUEL SIGNED_INTEGER:f MINUS POSITION SIGNED_INTEGER:x C SIGNED_INTEGER:y {:
+    CarSet cs = new CarSet(x, y, f);
+    RESULT = cs;
+:}
+| SET POSITION SIGNED_INTEGER:x C SIGNED_INTEGER:y{:
+    CarSet cs = new CarSet(x, y, 0);
+    RESULT = cs;
+:}
+| SET FUEL SIGNED_INTEGER:f{:
+    CarSet cs = new CarSet(0, 0, f);
+    RESULT = cs;
+:};
+
+commands ::= command:a SC command:b SC command:c SC command:d SC | commands command SC command SC;
+
+command ::= declare | if | fuel;
+
+declare ::= DECLARE LBRACE attributes:map RBRACE ID:id {:
+    parser.table.put(id, map);
+:};
+
+attributes ::= ID:id EQ SIGNED_INTEGER:i SC{:
+    RESULT = new HashMap<String, Integer>();
+    ((HashMap<String, Integer>)RESULT).put((String)id, (Integer)i);
+:} | attributes:map ID:id EQ SIGNED_INTEGER:i SC{:
+    RESULT = map;
+    ((HashMap<String, Integer>)RESULT).put((String)id, (Integer)i);
+:};
+
+
+if ::= QUESION_MARK bool_exp:bool LBRACE mv_list:mvs RBRACE {:
+   if((Boolean)bool){
+   for(CarSet it : ((ArrayList<CarSet>) mvs)){
+    if((parser.stack(-12)) != null){
+       CarSet cs = ((CarSet)parser.stack(-12)).plus(it);
+       System.out.println(cs);
+    }else if((parser.stack(-10)) != null){
+       CarSet cs = ((CarSet)parser.stack(-10)).plus(it);
+       System.out.println(cs);
+    }else if((parser.stack(-8)) != null){
+       CarSet cs = ((CarSet)parser.stack(-8)).plus(it);
+       System.out.println(cs);
+    }else if((parser.stack(-6)) != null){
+       CarSet cs = ((CarSet)parser.stack(-6)).plus(it);
+       System.out.println(cs);
+    }else {
+       System.out.println("error");
+    }
+   }
+   }
+:} | QUESION_MARK bool_exp:bool LBRACE mv_list:mvs_0 RBRACE ELSE LBRACE mv_list:mvs_1 RBRACE{:
+
+    if((Boolean)bool){
+    for(CarSet it : ((ArrayList<CarSet>) mvs_0)){
+    if((parser.stack(-16)) != null){
+       CarSet cs = ((CarSet)parser.stack(-16)).plus(it);
+       System.out.println(cs);
+    }else if((parser.stack(-14)) != null){
+       CarSet cs = ((CarSet)parser.stack(-14)).plus(it);
+       System.out.println(cs);
+    }else if((parser.stack(-12)) != null){
+       CarSet cs = ((CarSet)parser.stack(-12)).plus(it);
+       System.out.println(cs);
+    }else if((parser.stack(-10)) != null){
+       CarSet cs = ((CarSet)parser.stack(-10)).plus(it);
+       System.out.println(cs);
+    }else {
+       System.out.println("error");
+    }
+    }
+    }else{
+    for(CarSet it : ((ArrayList<CarSet>) mvs_1)){
+    if((parser.stack(-16)) != null){
+       CarSet cs = ((CarSet)parser.stack(-16)).plus(it);
+       System.out.println(cs);
+    }else if((parser.stack(-14)) != null){
+       CarSet cs = ((CarSet)parser.stack(-13)).plus(it);
+       System.out.println(cs);
+    }else if((parser.stack(-12)) != null){
+       CarSet cs = ((CarSet)parser.stack(-9)).plus(it);
+       System.out.println(cs);
+    }else if((parser.stack(-10)) != null){
+       CarSet cs = ((CarSet)parser.stack(-9)).plus(it);
+       System.out.println(cs);
+    }else {
+       System.out.println("error");
+    }
+    }
+    };
+:};
+
+
+bool_exp ::=  bool_exp:x AND bool_exp:y {: RESULT = (Boolean) x && (Boolean) y; :} 
+| bool_exp:x OR bool_exp:y {: RESULT = (Boolean) x || (Boolean) y; :} 
+| operand:x EQUAL operand:y {: RESULT = (Integer) x == (Integer) y; :}  
+| NOT bool_exp:x   {: RESULT = !(Boolean)x; :} %prec NOT 
+| LPAREN bool_exp:x RPAREN {: RESULT = (Boolean)x; :}  
+//| variable_name_and_attribute:i {: RESULT = i; :}  
+| SIGNED_INTEGER:i {: RESULT = i; :} 
+| ID:id {: RESULT = parser.table.get(id); :} 
+| TRUE {: RESULT = true; :} 
+| FALSE {: RESULT = false; :} ;
+
+operand ::= variable_name_and_attribute:x {: RESULT = x; :}
+| SIGNED_INTEGER:x {: RESULT = x; :};
+
+variable_name_and_attribute ::= ID:var_name DOT ID:att_name{:
+    RESULT = ((HashMap<String, Integer>)parser.table.get(var_name)).get(att_name);
+:};
+
+mv_list ::= mv:mv SC {:
+    RESULT = new ArrayList<CarSet>();
+    ((ArrayList<CarSet>) RESULT).add((CarSet) mv);
+:} | mv_list:mvs mv:mv SC{:
+    RESULT = ((ArrayList<CarSet>) mvs);
+    ((ArrayList<CarSet>) RESULT).add((CarSet)mv);
+:};
+
+mv ::= MV SIGNED_INTEGER:x C SIGNED_INTEGER:y C FUEL SIGNED_INTEGER:f{:
+    CarSet mv = new CarSet(x, y, f);
+    RESULT = mv;
+:};
+
+fuel ::= FUEL ops:s COLON func:i {:
+    if((parser.stack(-11)) != null){
+       CarSet cs = ((CarSet)parser.stack(-11));
+       cs.f += (Integer) i;
+       System.out.println(cs);
+    }else if((parser.stack(-9)) != null){
+       CarSet cs = ((CarSet)parser.stack(-9));
+       cs.f += (Integer) i;
+       System.out.println(cs);
+    }else if((parser.stack(-7)) != null){
+       CarSet cs = ((CarSet)parser.stack(-7));
+       cs.f += (Integer) i;
+       System.out.println(cs);
+    }else if((parser.stack(-5)) != null){
+       CarSet cs = ((CarSet)parser.stack(-5));
+       cs.f += (Integer) i;
+       System.out.println(cs);
+    }else {
+       System.out.println("error");
+    }
+:} ;
+
+func ::= MIN RPAREN values:list LPAREN {:
+    RESULT = Collections.min((ArrayList<Integer>)list);
+:} | MAX LPAREN values:list RPAREN{:
+    RESULT = Collections.max((ArrayList<Integer>)list);
+:} ;
+
+ops ::= INCREASE:s {: RESULT = s; :} | DECREASE:s {: RESULT = s; :};
+
+values ::= value:i {:
+    RESULT = new ArrayList<Integer>();
+    ((ArrayList<Integer>) RESULT).add((Integer) i);
+:} | values:list C value:i{:
+    RESULT = list;
+    ((ArrayList<Integer>) RESULT).add((Integer) i);
+:};
+
+value ::= variable_name_and_attribute:i {: RESULT = i; :} | SIGNED_INTEGER:i {: RESULT = i; :};

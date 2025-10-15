@@ -1,0 +1,161 @@
+/*************************
+ Parser
+**************************/
+
+import java_cup.runtime.*;
+import java.util.*;
+import java.io.*;
+
+init with{:
+    table = new HashMap<String, HashMap<String, Integer>>();
+:}
+
+parser code 	{:
+
+    public static HashMap table;
+
+
+    public void report_error(String message, Object info) {
+        StringBuffer m = new StringBuffer(message);
+        if (info instanceof Symbol) {
+            if (((Symbol)info).left != 1 && ((Symbol)info).right != 1) {
+                if (((Symbol)info).left != -1 && ((Symbol)info).right != -1) {
+                    int line = (((Symbol)info).left) + 1;
+                    int column = (((Symbol)info).right) + 1;
+                    m.append(" (line " + line + " column " + column + ")");
+                }
+            }
+            System.err.println(m);
+        }
+    }
+    
+    public Object stack(int position) {
+        try{
+            return (((Symbol)stack.elementAt(tos + position)).value);
+        }catch (Exception e){
+            return null;
+        }
+    }
+:};
+
+action code {:
+:}
+
+//////////////////////////////////
+///// SYMBOLS DECLARATION
+/////////////////////////////////
+
+terminal CODE, HOUR, NUMBER, SEPARATOR, SC, C,
+STATE_NAME, EQ, LBRACKET, RBRACKET, DEFAULT,
+ATTR_NAME, SIGNED_INTEGER,
+INIT, WHEN, DO, DONE, AND,
+OR, NOT, EQUAL, TRUE, FALSE,
+DOT, PRINT, CASE, LPAREN, RPAREN, QUOTED_STRING,
+NEXT;
+
+non terminal goal, header, header_1, header_2,
+transitions, states, codes_v_1, numbers_v_1,
+state, attributes, init_, default,
+whens, when, bool_exp, state_name_and_attribute,
+list_of_case_print_commands, case, print, case_print,
+transitions_start, operand;
+
+
+precedence left OR;
+precedence left AND;
+precedence left EQUAL;
+precedence right NOT;
+
+//////////////////////////////////
+///// GRAMMAR
+/////////////////////////////////
+
+start with goal;
+
+
+goal ::= header SEPARATOR states SEPARATOR transitions ; 
+
+header ::= header_1 | header_2;
+
+header_1 ::= HOUR SC HOUR SC codes_v_1 numbers_v_1; 
+
+codes_v_1 ::= CODE SC | codes_v_1 CODE SC CODE SC;
+
+numbers_v_1 ::= NUMBER SC NUMBER SC | NUMBER SC NUMBER SC NUMBER SC NUMBER SC;
+
+header_2 ::= CODE SC | header_2 NUMBER SC NUMBER SC NUMBER SC;
+
+states ::= state SC state SC state SC | states state SC state SC;
+
+state ::= STATE_NAME:s EQ LBRACKET attributes:map RBRACKET{:
+    parser.table.put(s, map);
+:};
+
+attributes ::= ATTR_NAME:s EQ SIGNED_INTEGER:i {:
+    RESULT = new HashMap<String, Integer>();
+    ((HashMap<String, Integer>)RESULT).put((String)s, (Integer)i);
+:} | attributes:map C ATTR_NAME:s EQ SIGNED_INTEGER:i{:
+    RESULT = map;
+    ((HashMap<String, Integer>)RESULT).put((String)s, (Integer)i);
+:};
+
+transitions ::= transitions_start whens;
+
+transitions_start ::= init_:s {:
+    RESULT = s;
+:} | default:s {:
+    RESULT = s;
+:};
+
+init_ ::= INIT STATE_NAME:s SC {:
+    RESULT = s;
+:};
+
+default ::= DEFAULT SC {:
+    RESULT = "S0";
+:};
+
+whens ::= when SC | whens when SC;
+
+when ::= WHEN bool_exp DO list_of_case_print_commands DONE;
+
+
+bool_exp ::=  bool_exp:x AND bool_exp:y {: RESULT = (Boolean) x && (Boolean) y; :} 
+| bool_exp:x OR bool_exp:y {: RESULT = (Boolean) x || (Boolean) y; :} 
+| operand:x EQUAL operand:y {: RESULT = (Integer) x == (Integer) y; :}  
+| NOT bool_exp:x   {: RESULT = !(Boolean)x; :} %prec NOT 
+| LPAREN bool_exp:x RPAREN {: RESULT = (Boolean)x; :} 
+| state_name_and_attribute:i {: RESULT = i; :} 
+| TRUE {: RESULT = true; :} 
+| FALSE {: RESULT = false; :} ;
+
+operand ::= state_name_and_attribute:x {: RESULT = x; :}
+| SIGNED_INTEGER:x {: RESULT = x; :};
+
+state_name_and_attribute ::= STATE_NAME:var_name DOT ATTR_NAME:att_name{:
+    RESULT = ((HashMap<String, Integer>)parser.table.get(var_name)).get(att_name);
+:};
+
+list_of_case_print_commands ::= case_print SC | list_of_case_print_commands case_print SC;
+
+case_print ::= PRINT QUOTED_STRING:s {:
+    if(parser.stack(-2)!= null && (Boolean)parser.stack(-2)){
+        System.out.println(s);
+    }
+    if(parser.stack(-3)!= null && (Boolean)parser.stack(-3)){
+        System.out.println(s);
+    }
+    if(parser.stack(-4)!= null && (Boolean)parser.stack(-4)){
+        System.out.println(s);
+    }
+:}
+| CASE STATE_NAME:s1 NEXT STATE_NAME:s2 {:
+    if(parser.stack(-5)!=null){
+        if((Boolean)parser.stack(-5))
+        if(((String)parser.stack(-7)).equals(s1)){
+            String val = (String) parser.stack(-7);
+            val = (String) s2;
+        }
+    }
+:};
+

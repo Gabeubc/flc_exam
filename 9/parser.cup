@@ -1,0 +1,167 @@
+/*************************
+ Parser
+**************************/
+
+import java_cup.runtime.*;
+import java.util.*;
+import java.io.*;
+
+init with{:
+    table = new HashMap<String, Float>();
+:}
+
+parser code 	{:
+
+    public static HashMap table;
+
+    public void report_error(String message, Object info) {
+        StringBuffer m = new StringBuffer(message);
+        if (info instanceof Symbol) {
+            if (((Symbol)info).left != 1 && ((Symbol)info).right != 1) {
+                if (((Symbol)info).left != -1 && ((Symbol)info).right != -1) {
+                    int line = (((Symbol)info).left) + 1;
+                    int column = (((Symbol)info).right) + 1;
+                    m.append(" (line " + line + " column " + column + ")");
+                }
+            }
+            System.err.println(m);
+        }
+    }
+    
+    public Object stack(int position) {
+        try{
+            return (((Symbol)stack.elementAt(tos + position)).value);
+        }catch (Exception e){
+            return null;
+        }
+    }
+:};
+
+action code {:
+:}
+
+//////////////////////////////////
+///// SYMBOLS DECLARATION
+/////////////////////////////////
+
+terminal TOKEN_1, TOKEN_2, TOKEN_3, SEPARATOR,
+SC, C, COLON,
+PLUS, MINUS, DIV, MULT, POW, UMINUS,
+EQ,
+LPAREN, RPAREN, LBRACKET, RBRACKET, 
+REAL_NUMBER,
+QUOTED_STRING, ID,
+FZ, MAX, IF, RANGE, PATH, IN, PRINT;
+
+non terminal goal, header, program,
+token_2_list, token_3_list, token_2_3_mix_list,
+instructions, instruction,
+assignment, if, function,
+operation, points, intervals, interval,
+range,
+arithmetic_exp, element;
+
+
+precedence left PLUS, MINUS;
+precedence left MULT, DIV;
+precedence right POW;
+precedence right UMINUS;
+
+//////////////////////////////////
+///// GRAMMAR
+/////////////////////////////////
+
+start with goal;
+
+goal ::= header SEPARATOR program;
+
+header ::= token_2_3_mix_list TOKEN_1 SC token_2_3_mix_list TOKEN_1 SC token_2_3_mix_list;
+
+token_2_3_mix_list ::= 
+| token_2_list
+| token_3_list;
+
+token_2_list ::= TOKEN_2 SC
+| token_2_list TOKEN_2 SC;
+
+token_3_list ::= TOKEN_3 SC
+| token_3_list TOKEN_3 SC;
+
+program ::= | instructions;
+
+instructions ::= 
+ instruction SC instruction SC
+| instructions instruction SC instruction SC;
+
+instruction ::= assignment | function | if;
+
+assignment ::= ID:k EQ arithmetic_exp:v {:
+    parser.table.put((String)k, (Float)v);
+:};
+
+function ::= FZ LPAREN operation:op C points:map RPAREN{:
+    switch ((String) op){
+        case "MAX":{
+                RESULT = 0f;
+            break;
+        }
+        case "PATH":{
+                RESULT = 0f;
+            break;
+        }
+        default: {
+                RESULT = 0f;
+            break;
+        }
+    }
+:};
+
+operation ::= PATH:s {: RESULT = s; :}
+| MAX:s {: RESULT = s; :};
+
+points ::= LBRACKET arithmetic_exp:x C arithmetic_exp:y RBRACKET {:
+
+:}
+| points:map C LBRACKET arithmetic_exp:x C arithmetic_exp:y RBRACKET{:
+
+:};
+
+element ::= LBRACKET arithmetic_exp C arithmetic_exp RBRACKET;
+
+if ::= IF arithmetic_exp intervals;
+
+intervals ::= interval | intervals C interval;
+
+interval ::= IN RANGE LBRACKET arithmetic_exp:x COLON arithmetic_exp:y RBRACKET PRINT QUOTED_STRING:s{:
+    if(parser.stack(-9)!=null){
+        Float f = (Float) parser.stack(-5);
+        if ((Float) x < f && (Float) y < f){
+            System.out.println(s);
+        }
+    }
+    
+    if(parser.stack(-10)!=null){
+        Float f = (Float) parser.stack(-5);
+        if ((Float) x < f && (Float) y < f){
+            System.out.println(s);
+        }
+    }
+:};
+
+range ::= LBRACKET arithmetic_exp C arithmetic_exp RBRACKET;
+
+
+
+arithmetic_exp ::=  arithmetic_exp:x PLUS arithmetic_exp:y {: RESULT = (Float) x + (Float) y; :}
+| arithmetic_exp:x MINUS arithmetic_exp:y {: RESULT = (Float) x - (Float) y; :}
+| arithmetic_exp:x MULT arithmetic_exp:y {: RESULT = (Float) x * (Float) y; :}
+| arithmetic_exp:x DIV arithmetic_exp:y {: RESULT = (Float) x / (Float) y; :}
+| arithmetic_exp:x POW arithmetic_exp:y  {: RESULT = Math.pow((Float) x , (Float) y); :} %prec POW
+| LPAREN arithmetic_exp:x RPAREN {: RESULT = x; :}
+| MINUS arithmetic_exp:x  {: RESULT = -((Float)x); :} %prec UMINUS 
+| PLUS arithmetic_exp:x   {: RESULT = x; :} %prec UMINUS
+| function:x {: RESULT = x; :}
+| REAL_NUMBER:x {: RESULT = x; :}
+| ID:var  {: 
+RESULT = (Float) parser.table.get(var);
+:};

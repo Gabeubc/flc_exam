@@ -1,0 +1,36 @@
+/* Header section (First type of grammar) */
+10:11:12;                   /* <hour> */
+13:52:58;                   /* <hour> */
+xxxxyyyy|-2b ;              /* <code> */
+xyzxxxyyxx|;                /* <code> */
+xxyyyz|223;                   /* <code> */
+101.111-101001111100000-101; /* <number> */
+111+000+101+010+110-001;   /* <number> */
+
+##
+
+/* States section */
+S0 = [ a = 1, b = 2 ];
+S1 = [ a = 3, b = 4 ];
+S2 = [ a = 5, b = 6, c = 7 ];
+
+##
+
+/* Transitions section */
+INIT S2;                            /* current state is set to S2 */
+
+WHEN S0.a==1 || S0.b==2 && S1.a==2 DO    /* TRUE OR TRUE AND FALSE = TRUE OR FALSE = TRUE */
+    CASE S1 NEXT S2;                     /* Not executed because current state is S2 */
+    CASE S2 NEXT S3;                     /* Executed, current state is set to S3 */
+    PRINT "FIRST WHEN";                  /* It prints "FIRST WHEN" in the screen */
+DONE;
+
+WHEN ! ( S1.a==5 || S1.b==4) DO          /* NOT ( FALSE OR TRUE ) = NOT TRUE = FALSE */
+    CASE S1 NEXT S2;                     /* Instruction not executed because boolean_expr is FALSE */
+DONE;
+
+WHEN !! S2.a == 5 DO                      /* NOT NOT TRUE = NOT FALSE = TRUE */
+    PRINT "THIRD WHEN";                 /* It prints "THIRD WHEN" in the screen */
+    CASE S3 NEXT S1;                    /* Executed, current state is set to S1 */
+    CASE S1 NEXT S2;                    /* Not executed, because for now current state is S3 */
+DONE;

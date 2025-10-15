@@ -1,0 +1,101 @@
+/*************************
+ Parser
+**************************/
+
+import java_cup.runtime.*;
+import java.util.*;
+import java.io.*;
+
+
+parser code 	{:
+    
+    public void report_error(String message, Object info) {
+        StringBuffer m = new StringBuffer(message);
+        if (info instanceof Symbol) {
+            if (((Symbol)info).left != 1 && ((Symbol)info).right != 1) {
+                if (((Symbol)info).left != -1 && ((Symbol)info).right != -1) {
+                    int line = (((Symbol)info).left) + 1;
+                    int column = (((Symbol)info).right) + 1;
+                    m.append(" (line " + line + " column " + column + ")");
+                }
+            }
+            System.err.println(m);
+        }
+    }
+    
+    public Object stack(int position) {
+        return (((Symbol)stack.elementAt(tos + position)).value);
+    }
+:};
+
+
+
+//////////////////////////////////
+///// SYMBOLS DECLARATION
+/////////////////////////////////
+
+terminal TOKEN_1, TOKEN_2, TOKEN_3, SEPARATOR, SET, SIGNED_INTEGER,
+MINUS, BATTERY, CHANGE, PRINT, COMPUTE, COMMA, POS_X_Y, LPAREN, RPAREN,
+STAT, POS, SC, IN_CASE, LOWER, HIGHER, BETWEEN, QUOTED_STRING, DO,
+DONE, AND, COLON;
+
+non terminal goal, header, drone, token_1_list, token_2_list, token_1_2_list,
+commands, command, print, change,
+values_list, value, case_list, case, interval,
+instruction_list, instruction, state_value;
+
+
+
+//////////////////////////////////
+///// GRAMMAR
+/////////////////////////////////
+
+start with goal;
+
+goal ::= header SEPARATOR drone;
+
+header ::=  token_1_2_list
+| token_1_2_list TOKEN_3 SC token_1_2_list TOKEN_3 SC token_1_2_list
+| token_1_2_list TOKEN_3 SC token_1_2_list TOKEN_3 SC token_1_2_list TOKEN_3 SC token_1_2_list;
+
+token_1_list ::= TOKEN_1 SC | TOKEN_1 SC token_1_list;
+
+token_2_list ::= TOKEN_2 SC | TOKEN_2 SC token_2_list;
+
+token_1_2_list ::= | token_1_list | token_2_list | token_1_list token_2_list | token_2_list token_1_list;
+
+drone ::= SET POS SIGNED_INTEGER SIGNED_INTEGER SIGNED_INTEGER MINUS BATTERY SIGNED_INTEGER SC commands | 
+SET BATTERY SIGNED_INTEGER MINUS POS SIGNED_INTEGER SIGNED_INTEGER SIGNED_INTEGER SC commands;
+
+commands ::= command SC command SC command SC command SC command SC command SC command SC |  commands command SC ;
+
+command ::= print|
+change|
+COMPUTE LPAREN STAT COMMA values_list RPAREN|
+IN_CASE state_value case_list;
+
+print  ::= PRINT QUOTED_STRING;
+
+change ::= CHANGE POS SIGNED_INTEGER SIGNED_INTEGER SIGNED_INTEGER  
+| CHANGE POS SIGNED_INTEGER SIGNED_INTEGER SIGNED_INTEGER MINUS BATTERY SIGNED_INTEGER
+| CHANGE BATTERY SIGNED_INTEGER
+| CHANGE BATTERY SIGNED_INTEGER MINUS POS SIGNED_INTEGER SIGNED_INTEGER SIGNED_INTEGER;
+
+values_list ::= value  | value COMMA values_list;
+
+value ::= SIGNED_INTEGER| POS_X_Y | BATTERY;
+
+state_value ::= POS_X_Y | BATTERY;
+
+case_list ::= case | case case_list;
+
+case ::= interval DO instruction_list DONE;
+
+instruction_list ::= instruction SC | instruction SC instruction_list;
+
+instruction ::= print | change ;
+
+interval ::= LOWER SIGNED_INTEGER | HIGHER SIGNED_INTEGER
+| BETWEEN SIGNED_INTEGER AND SIGNED_INTEGER;
+
+

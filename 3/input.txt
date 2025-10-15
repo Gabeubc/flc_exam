@@ -1,0 +1,46 @@
+$$ Header section
+
+xxxx*xyxyxxyy$yyyy*xyxy*xxxy; $$ <token2>
+!!!abcdefg ; $$ <token1>
+july 03, 2018; $$ <token3>
+!!!ABCDEFGH10111; $$ <token1>
+2018/10/22 ; $$ <token3>
+
+##
+
+
+$$ Drone section
+$$ Instruction SET POS 0 0 0 - BATTERY 100; is also possible
+SET BATTERY 100 - POS 0 0 0 ;    ?? BATTERY: 100 - POS: 0 0 0
+
+PRINT "START PROGRAM";
+CHANGE POS -2 +3 2;                $$ BATTERY: 100 - POS: -2 3 2
+CHANGE BATTERY -3 - POS 1 3 3;     $$ BATTERY: 97 - POS -1 6 5
+CHANGE BATTERY -3 - POS 1 3 3;     $$ BATTERY: 97 - POS -1 6 5
+CHANGE BATTERY -3 - POS 1 3 3;     $$ BATTERY: 97 - POS -1 6 5
+CHANGE BATTERY -3 - POS 1 3 3;     $$ BATTERY: 97 - POS -1 6 5
+
+COMPUTE (AVG, POS.X, POS.Y, 4);    $$ Returns: (-1 + 6 + 4) / 3 = 9.0
+COMPUTE (MAX, POS.X, POS.Y, BATTERY, -2);  $$ Returns: max(-1,6,97,-2) = 97.0
+
+$$ Inside IN_CASE only CHANGE and PRINT instructions are allowed
+$$ POS.X is equal to -1 (and remains equal to -1 for all the IN_CASE command)
+IN_CASE POS.X LOWER 3 DO  $$ True
+                PRINT "1";
+                CHANGE BATTERY -2 ;               $$ BATTERY: 95 - POS: -1 6 5
+                CHANGE POS -1 -1 -1;              $$ BATTERY: 95 - POS: -2 5 4
+              DONE
+              HIGHER 2 DO  $$ False
+                PRINT "2";
+                CHANGE POS -1 -2 -3 - BATTERY -5 ;
+              DONE
+              BETWEEN -5 AND 6 DO  $$ True
+                PRINT "3";
+                CHANGE POS -2 -2 -2 - BATTERY -4 ; $$ BATTERY: 91 - POS: -4 3 2
+              DONE ;
+CHANGE BATTERY -2 ;                $$ BATTERY: 89 % - POS: -4 3 2
+$$ POS.Z is equal to 2
+IN_CASE BATTERY LOWER 3 DO  $$ False
+                  PRINT "4";
+                DONE;
+PRINT "END PROGRAM";
